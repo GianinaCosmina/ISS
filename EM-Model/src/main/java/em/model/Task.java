@@ -49,4 +49,12 @@ public class Task implements Serializable {
     public void setUser(User user) {
         this.user = user;
     }
+
+    @Override
+    public String toString() {
+        return "Task {" +
+                "description: '" + description + '\'' +
+                ", user: " + user +
+                '}';
+    }
 }

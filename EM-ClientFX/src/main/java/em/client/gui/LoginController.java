@@ -79,6 +79,7 @@ public class LoginController {
                 }
 
                 setController(loggedInController);
+                server.setEMObserver(loggedInController);
                 setParent(loggedInRoot);
 
                 Stage stage = new Stage();

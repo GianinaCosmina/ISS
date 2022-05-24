@@ -1,5 +1,6 @@
 package em.server;
 
+import em.model.Role;
 import em.model.Task;
 import em.model.User;
 import em.persistence.TaskRepository;
@@ -8,19 +9,27 @@ import em.services.EMObserver;
 import em.services.Service;
 import em.services.ServicesException;
 
+import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ServiceImpl implements Service {
     private UserRepository userRepository;
     private TaskRepository taskRepository;
     private Map<Long, EMObserver> loggedUsers;
+    private Map<Long, LocalTime> presentAtWork;
+    private final int defaultThreadsNo = 5;
 
     public ServiceImpl(UserRepository userRepository, TaskRepository taskRepository) {
         this.userRepository = userRepository;
         this.taskRepository = taskRepository;
         this.loggedUsers = new ConcurrentHashMap<>();
+        this.presentAtWork = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -84,22 +93,123 @@ public class ServiceImpl implements Service {
     }
 
     @Override
-    public Task sendTask(User user, Task task) throws ServicesException {
-        return null;
+    public Task sendTask(Task task) throws ServicesException {
+        Task task1 = taskRepository.addTask(task);
+        notifyEmployee(task);
+        return task1;
+    }
+
+    private void notifyEmployee(Task task) {
+        ExecutorService executor = Executors.newFixedThreadPool(defaultThreadsNo);
+
+        for(User emp : userRepository.findAll()) {
+            if (emp.getRole() == Role.EMPLOYEE && Objects.equals(emp.getUsername(), task.getUser().getUsername())) {
+                EMObserver emObserver = loggedUsers.get(emp.getId());
+                if (emObserver != null) {
+                    executor.execute(() -> {
+                        try {
+                            System.out.println("Notifying [" + emp + "] about task [" + task.getDescription() + "].");
+                            emObserver.taskSent(task);
+                        } catch (ServicesException e) {
+                            System.err.println("Error notifying boss " + e);
+                        }
+                    });
+                }
+            }
+        }
+
+        executor.shutdown();
     }
 
     @Override
-    public void presentToWork(User user) throws ServicesException {
+    public synchronized void presentToWork(User user) throws ServicesException {
+        if (presentAtWork.get(user.getId()) != null) {
+            throw new ServicesException("Employee already present at work!");
+        }
+        LocalTime time = LocalTime.now();
+        presentAtWork.put(user.getId(), time);
+        notifyBossAboutPresence(user, time);
+    }
 
+    private void notifyBossAboutPresence(User user, LocalTime time) {
+        ExecutorService executor = Executors.newFixedThreadPool(defaultThreadsNo);
+
+        for(User boss : userRepository.findAll()){
+            if (boss.getRole() == Role.BOSS) {
+                EMObserver emObserver = loggedUsers.get(boss.getId());
+                if (emObserver != null) {
+                    executor.execute(() -> {
+                        try {
+                            System.out.println("Notifying [" + boss + "] about user [" + user + "].");
+                            Map<User, LocalTime> map = new HashMap<>();
+                            map.put(user, time);
+                            emObserver.startedWork(map);
+                        } catch (ServicesException e) {
+                            System.err.println("Error notifying boss " + e);
+                        }
+                    });
+                }
+            }
+        }
+
+        executor.shutdown();
     }
 
     @Override
-    public void leaveWork(User user, EMObserver client) throws ServicesException {
+    public void leaveWork(User user) throws ServicesException {
+        if (presentAtWork.get(user.getId()) == null) {
+            throw new ServicesException("Employee isn't working!");
+        }
+        presentAtWork.remove(user.getId());
+        notifyBossAboutLeaving(user);
+    }
 
+    private void notifyBossAboutLeaving(User user) {
+        ExecutorService executor = Executors.newFixedThreadPool(defaultThreadsNo);
+
+        for(User boss : userRepository.findAll()){
+            if (boss.getRole() == Role.BOSS) {
+                EMObserver emObserver = loggedUsers.get(boss.getId());
+                if (emObserver != null) {
+                    executor.execute(() -> {
+                        try {
+                            System.out.println("Notifying [" + boss + "] about user [" + user + "].");
+                            emObserver.leftWork(user);
+                        } catch (ServicesException e) {
+                            System.err.println("Error notifying boss " + e);
+                        }
+                    });
+                }
+            }
+        }
+
+        executor.shutdown();
     }
 
     @Override
     public List<User> findAllUsers() {
         return userRepository.findAll();
+    }
+
+    @Override
+    public Map<User, LocalTime> getPresentAtWorkEmployees() throws ServicesException {
+        List<User> users = userRepository.findAll();
+        Map<User, LocalTime> present = new HashMap<>();
+        for(User user: users) {
+            if (presentAtWork.containsKey(user.getId())) {
+                present.put(user, presentAtWork.get(user.getId()));
+            }
+        }
+        return present;
+    }
+
+    @Override
+    public List<Task> getAllTasksForOneEmployee(User employee) throws ServicesException {
+        return taskRepository.getTasksForUser(employee);
+    }
+
+    @Override
+    public void setEMObserver(EMObserver emObserver) {
+
     }
 }

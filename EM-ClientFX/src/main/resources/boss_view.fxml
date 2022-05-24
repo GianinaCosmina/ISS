@@ -2,7 +2,6 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.effect.DropShadow?>
@@ -27,13 +26,8 @@
             <Font name="Times New Roman" size="12.0" />
          </font>
       </Label>
-      <TableView layoutX="20.0" layoutY="67.0" prefHeight="318.0" prefWidth="324.0">
-        <columns>
-          <TableColumn prefWidth="159.20001792907715" text="Name" />
-          <TableColumn minWidth="0.0" prefWidth="164.79998779296875" text="Login time" />
-        </columns>
-      </TableView>
-      <Button layoutX="441.0" layoutY="340.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="154.0" style="-fx-background-color: #08009c; -fx-cursor: hand;" text="Send task" textFill="WHITE">
+      <TableView fx:id="presentEmployeesTableView" layoutX="20.0" layoutY="67.0" prefHeight="318.0" prefWidth="324.0" />
+      <Button layoutX="441.0" layoutY="340.0" mnemonicParsing="false" onAction="#sendTaskButtonOnAction" prefHeight="26.0" prefWidth="154.0" style="-fx-background-color: #08009c; -fx-cursor: hand;" text="Send task" textFill="WHITE">
          <font>
             <Font name="Times New Roman Bold" size="14.0" />
          </font>
@@ -49,7 +43,7 @@
             <DropShadow />
          </effect>
       </Label>
-      <TextArea layoutX="356.0" layoutY="116.0" prefHeight="200.0" prefWidth="324.0" promptText="Write the task description..." />
+      <TextArea fx:id="descriptionTextArea" layoutX="356.0" layoutY="116.0" prefHeight="200.0" prefWidth="324.0" promptText="Write the task description..." />
       <Line endX="3.0517578125E-5" endY="-34.0" layoutX="350.0" layoutY="34.0" startX="3.0517578125E-5" startY="366.89288330078125">
          <effect>
             <DropShadow />

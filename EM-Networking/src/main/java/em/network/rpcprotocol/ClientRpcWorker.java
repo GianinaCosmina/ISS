@@ -10,6 +10,9 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Map;
 
 
 public class ClientRpcWorker implements Runnable, EMObserver {
@@ -122,6 +125,55 @@ public class ClientRpcWorker implements Runnable, EMObserver {
                 return new Response.Builder().type(ResponseType.ERROR).data(e.getMessage()).build();
             }
         }
+        if (request.type() == RequestType.PRESENT_TO_WORK){
+            System.out.println("Present to work request..." + request.type());
+            User usr = (User) request.data();
+            try {
+                server.presentToWork(usr);
+                return new Response.Builder().type(ResponseType.ADDED_AS_PRESENT).data(usr).build();
+            } catch (ServicesException e) {
+                return new Response.Builder().type(ResponseType.ERROR).data(e.getMessage()).build();
+            }
+        }
+        if (request.type() == RequestType.LEAVE_WORK){
+            System.out.println("Leave work request..." + request.type());
+            User usr = (User) request.data();
+            try {
+                server.leaveWork(usr);
+                return new Response.Builder().type(ResponseType.GONE_FROM_WORK).data(usr).build();
+            } catch (ServicesException e) {
+                return new Response.Builder().type(ResponseType.ERROR).data(e.getMessage()).build();
+            }
+        }
+        if (request.type() == RequestType.GET_PRESENT_EMPLOYEES){
+            System.out.println("Get present employees request..." + request.type());
+            try {
+                Map<User, LocalTime> present = server.getPresentAtWorkEmployees();
+                return new Response.Builder().type(ResponseType.GOT_PRESENT_EMPLOYEES).data(present).build();
+            } catch (ServicesException e) {
+                return new Response.Builder().type(ResponseType.ERROR).data(e.getMessage()).build();
+            }
+        }
+        if (request.type() == RequestType.SEND_TASK){
+            System.out.println("Send task request..." + request.type());
+            Task task = (Task) request.data();
+            try {
+                Task sendTask = server.sendTask(task);
+                return new Response.Builder().type(ResponseType.TASK_SENT).data(sendTask).build();
+            } catch (ServicesException e) {
+                return new Response.Builder().type(ResponseType.ERROR).data(e.getMessage()).build();
+            }
+        }
+        if (request.type() == RequestType.GET_TASKS_FOR_EMPLOYEE){
+            System.out.println("Get tasks for one employee request..." + request.type());
+            User user = (User) request.data();
+            try {
+                List<Task> tasks = server.getAllTasksForOneEmployee(user);
+                return new Response.Builder().type(ResponseType.GOT_TASKS_FOR_EMPLOYEE).data(tasks).build();
+            } catch (ServicesException e) {
+                return new Response.Builder().type(ResponseType.ERROR).data(e.getMessage()).build();
+            }
+        }
 
         return response;
     }
@@ -133,12 +185,32 @@ public class ClientRpcWorker implements Runnable, EMObserver {
     }
 
     @Override
-    public void sentTask(User user, Task task) throws ServicesException {
-
+    public void taskSent(Task task) {
+        Response resp = new Response.Builder().type(ResponseType.TASK_SENT_UPDATE).data(task).build();
+        try {
+            sendResponse(resp);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
-    public void startedWork(User user) throws ServicesException {
+    public void startedWork(Map<User, LocalTime> map) {
+        Response resp = new Response.Builder().type(ResponseType.ADDED_AS_PRESENT_UPDATE).data(map).build();
+        try {
+            sendResponse(resp);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
+    @Override
+    public void leftWork(User user) {
+        Response resp = new Response.Builder().type(ResponseType.GONE_FROM_WORK_UPDATE).data(user).build();
+        try {
+            sendResponse(resp);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
