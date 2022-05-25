@@ -281,10 +281,10 @@ public class LoggedInController implements EMObserver {
     }
 
     public void sendTaskButtonOnAction() throws ServicesException {
-        User user = presentEmployeesTableView.getSelectionModel().getSelectedItem().getKey();
-        if (user != null) {
+        Map.Entry<User, LocalTime> map = presentEmployeesTableView.getSelectionModel().getSelectedItem();
+        if (map != null) {
             if (!descriptionTextArea.getText().isBlank()) {
-                Task task = new Task(descriptionTextArea.getText(), user);
+                Task task = new Task(descriptionTextArea.getText(), map.getKey());
                 server.sendTask(task);
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Task sent successfully!", ButtonType.OK);
                 alert.show();
